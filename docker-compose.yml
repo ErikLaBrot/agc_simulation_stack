@@ -1,0 +1,48 @@
+services:
+
+  carla:
+    image: carlasim/carla:0.9.13
+    container_name: carla
+    privileged: true
+    ports:
+      - 2000-2002:2000-2002
+    environment:
+      DISPLAY: ${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    runtime: nvidia
+    command: /bin/bash -c "./CarlaUE4.sh -nosound -carla-server -world-port=2000 -carla-streaming-port=0" #/bin/bash ./CarlaUE4.sh
+
+  ros2:
+    build:
+      context: ./docker/ros2_foxy
+    container_name: ros2
+    environment:
+      DISPLAY: ${DISPLAY}
+      ROS_DOMAIN_ID: 0
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      #- ./ros2:./ros2_ws
+    network_mode: host
+    stdin_open: true
+    tty: true
+
+  carla_ros_bridge:
+    build:
+      context: ./docker/carla_ros_bridge
+      dockerfile: Dockerfile
+    container_name: carla_ros_bridge
+    privileged: true
+    environment:
+      DISPLAY: ${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    depends_on:
+      carla:
+        condition: service_started
+    #network_mode: host
+    stdin_open: true
+    tty: true
+    command: ros2 launch carla_ros_bridge carla_ros_bridge_with_example_ego_vehicle.launch.py host:=carla timeout:=5 spawn_point_ego_vehicle:=spawn_point
+    runtime: nvidia
+    restart: always
