@@ -1,0 +1,5 @@
+workspaces/carla_ws/*
+workspaces/ros2/ros2_ws/*
+
+docker/carla_ros_bridge/*.whl
+docker/carla_ros_bridge/*.egg
