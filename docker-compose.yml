@@ -1,7 +1,8 @@
 services:
 
+  #Launches Carlasim with default params
   carla:
-    image: carlasim/carla:0.9.13
+    image: carlasim/carla:0.9.15
     container_name: carla
     privileged: true
     ports:
@@ -11,22 +12,9 @@ services:
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     runtime: nvidia
-    command: /bin/bash -c "./CarlaUE4.sh -nosound -carla-server -world-port=2000 -carla-streaming-port=0" #/bin/bash ./CarlaUE4.sh
+    command: /bin/bash -c "./CarlaUE4.sh -nosound -carla-server -world-port=2000 -carla-streaming-port=0" 
 
-  ros2:
-    build:
-      context: ./docker/ros2_foxy
-    container_name: ros2
-    environment:
-      DISPLAY: ${DISPLAY}
-      ROS_DOMAIN_ID: 0
-    volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      #- ./ros2:./ros2_ws
-    network_mode: host
-    stdin_open: true
-    tty: true
-
+  #Launches Carla Ros Bridge demo
   carla_ros_bridge:
     build:
       context: ./docker/carla_ros_bridge
@@ -34,15 +22,66 @@ services:
     container_name: carla_ros_bridge
     privileged: true
     environment:
-      DISPLAY: ${DISPLAY}
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1    
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     depends_on:
       carla:
         condition: service_started
-    #network_mode: host
     stdin_open: true
     tty: true
     command: ros2 launch carla_ros_bridge carla_ros_bridge_with_example_ego_vehicle.launch.py host:=carla timeout:=5 spawn_point_ego_vehicle:=spawn_point
     runtime: nvidia
+
+  #Launches carla ros bridge container with no cmds, for commandline work
+  carla_ros_bridge_cmd:
+    build:
+      context: ./docker/carla_ros_bridge
+      dockerfile: Dockerfile
+    container_name: carla_ros_bridge_test
+    privileged: true
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1    
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+    runtime: nvidia
     restart: always
+
+  #Launches ros2 humble container with no cmds, for commandline work
+  ros2_humble:
+    build:
+      context: ./docker/ros2_humble
+    container_name: ros2_humble
+    environment:
+      DISPLAY: ${DISPLAY}
+      ROS_DOMAIN_ID: 0
+    volumes:
+      - ./workspaces/ros2/ros2_ws:/ros2_ws
+    network_mode: host
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+
+  #Launches rviz using ros2 humble container
+  ros2_humble_rviz:
+    build:
+      context: ./docker/ros2_humble
+    container_name: ros2_humble_rviz
+    environment:
+      DISPLAY: ${DISPLAY}
+      ROS_DOMAIN_ID: 0
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /workspaces/ros2_ws:/root/ros2_ws
+    depends_on:
+      carla_ros_bridge:
+        condition: service_started
+    network_mode: host
+    stdin_open: true
+    tty: true
+    command: ros2 run rviz2 rviz2

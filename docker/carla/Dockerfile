@@ -1,5 +1,5 @@
 # Use CARLA version 0.9.15
-FROM carlasim/carla:0.9.13
+FROM carlasim/carla:0.9.15
 
 # Expose CARLA's default ports for communication
 EXPOSE 2000-2002
